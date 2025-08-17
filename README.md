@@ -1,14 +1,14 @@
 # FZ Stream Common Library
 
-这个库包含了 `fz-stream-server` 和 `fz-stream-client` 之间共享的数据结构和类型定义。
+This library contains shared data structures and type definitions between `fzstream-server` and `fzstream-client`.
 
-## 概述
+## Overview
 
-`fz-stream-common` 是一个公共库，用于确保服务器和客户端之间使用相同的数据结构和类型定义，避免代码重复和不一致。
+`fz-stream-common` is a shared library that ensures consistent data structures and type definitions between server and client, avoiding code duplication and inconsistencies.
 
-## 主要功能
+## Main Features
 
-### 1. 事件类型定义 (`events.rs`)
+### 1. Event Type Definitions (`events.rs`)
 
 #### EventType 枚举
 定义了所有支持的Solana事件类型：

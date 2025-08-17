@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
+use crate::{CompressionLevel, SerializationProtocol};
+
 /// 事件类型枚举
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum EventType {
@@ -252,23 +254,89 @@ impl Default for EventMetadata {
     }
 }
 
-/// QUIC服务器和客户端之间传输的事件消息
+/// QUIC服务器和客户端之间传输的事件消息（自描述格式）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventMessage {
     pub event_id: String,
     pub event_type: EventType,
-    pub data: Vec<u8>,  // bincode序列化的数据
+    pub data: Vec<u8>,  // 序列化和可能压缩的数据
     pub timestamp: u64,
+    // 新增：格式元数据（服务器端决定，客户端自动适应）
+    pub serialization_format: SerializationProtocol,
+    pub compression_format: CompressionLevel,
+    pub is_compressed: bool,  // 明确指示数据是否被压缩
+    pub original_size: Option<usize>, // 压缩前的原始大小（用于验证）
 }
 
-/// Solana事件包装器（用于bincode序列化）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SolanaEventWrapper {
-    pub event_type: EventType,
-    pub event_id: String,
-    pub timestamp: u64,
-    pub source: String,
-    pub data: Vec<u8>, // Bincode序列化的事件数据
+impl EventMessage {
+    /// 创建新的事件消息（服务器端使用）
+    pub fn new(
+        event_id: String,
+        event_type: EventType,
+        raw_data: Vec<u8>,
+        serialization_format: SerializationProtocol,
+        compression_format: CompressionLevel,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let original_size = raw_data.len();
+        
+        // 应用压缩（如果启用）
+        let (data, is_compressed, final_original_size) = if matches!(compression_format, CompressionLevel::None) {
+            (raw_data, false, None)
+        } else {
+            match crate::compression::compress_data(&raw_data, compression_format.clone()) {
+                Ok(compressed) => {
+                    if compressed.len() < raw_data.len() {
+                        // 压缩有效果，使用压缩版本
+                        (compressed, true, Some(original_size))
+                    } else {
+                        // 压缩没有效果，使用原始数据
+                        (raw_data, false, None)
+                    }
+                },
+                Err(_) => {
+                    // 压缩失败，使用原始数据
+                    (raw_data, false, None)
+                }
+            }
+        };
+
+        Ok(Self {
+            event_id,
+            event_type,
+            data,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            serialization_format,
+            compression_format,
+            is_compressed,
+            original_size: final_original_size,
+        })
+    }
+
+    /// 获取解压缩后的数据（客户端使用）
+    pub fn get_decompressed_data(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        if self.is_compressed {
+            crate::compression::decompress_data(&self.data, self.compression_format.clone())
+                .map_err(|e| e.into())
+        } else {
+            Ok(self.data.clone())
+        }
+    }
+    
+    /// 检查压缩效果
+    pub fn compression_ratio(&self) -> Option<f64> {
+        if let Some(original_size) = self.original_size {
+            if original_size > 0 {
+                Some(self.data.len() as f64 / original_size as f64)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 /// 客户端接收到的交易事件

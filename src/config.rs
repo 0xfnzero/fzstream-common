@@ -41,6 +41,17 @@ pub enum CompressionType {
     Zstd,
 }
 
+impl From<CompressionLevel> for CompressionType {
+    fn from(level: CompressionLevel) -> Self {
+        match level {
+            CompressionLevel::None => CompressionType::None,
+            CompressionLevel::LZ4Fast | CompressionLevel::LZ4High => CompressionType::LZ4,
+            CompressionLevel::ZstdFast | CompressionLevel::ZstdMedium 
+            | CompressionLevel::ZstdHigh | CompressionLevel::ZstdMax => CompressionType::Zstd,
+        }
+    }
+}
+
 /// 性能配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceProfile {
