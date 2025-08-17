@@ -266,6 +266,12 @@ pub struct EventMessage {
     pub compression_format: CompressionLevel,
     pub is_compressed: bool,  // 明确指示数据是否被压缩
     pub original_size: Option<usize>, // 压缩前的原始大小（用于验证）
+    // 新增：时间戳字段用于性能分析
+    pub grpc_arrival_time: u64,      // 1. 交易grpc到达时间
+    pub parsing_time: u64,           // 2. 交易解析时间
+    pub completion_time: u64,        // 3. 交易完成时间(到用户)
+    pub client_processing_start: Option<u64>, // 客户端开始处理时间
+    pub client_processing_end: Option<u64>,   // 客户端处理完成时间
 }
 
 impl EventMessage {
@@ -276,6 +282,9 @@ impl EventMessage {
         raw_data: Vec<u8>,
         serialization_format: SerializationProtocol,
         compression_format: CompressionLevel,
+        grpc_arrival_time: u64,
+        parsing_time: u64,
+        completion_time: u64,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let original_size = raw_data.len();
         
@@ -312,6 +321,11 @@ impl EventMessage {
             compression_format,
             is_compressed,
             original_size: final_original_size,
+            grpc_arrival_time,
+            parsing_time,
+            completion_time,
+            client_processing_start: None,
+            client_processing_end: None,
         })
     }
 
@@ -336,6 +350,77 @@ impl EventMessage {
         } else {
             None
         }
+    }
+
+    /// 设置客户端处理开始时间
+    pub fn set_client_processing_start(&mut self) {
+        self.client_processing_start = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64
+        );
+    }
+
+    /// 设置客户端处理结束时间
+    pub fn set_client_processing_end(&mut self) {
+        self.client_processing_end = Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64
+        );
+    }
+
+    /// 计算服务器端总耗时（毫秒）
+    pub fn server_total_time_ms(&self) -> u64 {
+        if self.completion_time > 0 && self.grpc_arrival_time > 0 {
+            self.completion_time - self.grpc_arrival_time
+        } else {
+            0
+        }
+    }
+
+    /// 计算客户端处理耗时（毫秒）
+    pub fn client_processing_time_ms(&self) -> Option<u64> {
+        if let (Some(start), Some(end)) = (self.client_processing_start, self.client_processing_end) {
+            Some(end - start)
+        } else {
+            None
+        }
+    }
+
+    /// 计算端到端总耗时（毫秒）
+    pub fn end_to_end_time_ms(&self) -> Option<u64> {
+        if let Some(client_time) = self.client_processing_time_ms() {
+            Some(self.server_total_time_ms() + client_time)
+        } else {
+            None
+        }
+    }
+
+    /// 获取详细的时间分析
+    pub fn get_timing_analysis(&self) -> String {
+        let server_time = self.server_total_time_ms();
+        let client_time = self.client_processing_time_ms().unwrap_or(0);
+        let end_to_end = self.end_to_end_time_ms().unwrap_or(0);
+        
+        format!(
+            "Timing Analysis for {}:\n\
+             • GRPC Arrival: {}ms\n\
+             • Parsing Time: {}ms\n\
+             • Completion Time: {}ms\n\
+             • Server Total: {}ms\n\
+             • Client Processing: {}ms\n\
+             • End-to-End: {}ms",
+            self.event_id,
+            self.grpc_arrival_time,
+            self.parsing_time,
+            self.completion_time,
+            server_time,
+            client_time,
+            end_to_end
+        )
     }
 }
 
