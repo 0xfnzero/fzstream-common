@@ -8,6 +8,33 @@ pub mod config;
 pub mod compression;
 pub mod compression_stats;
 
+// 定义 match_event! 宏
+#[macro_export]
+macro_rules! match_event {
+    ($event:expr, {
+        $($event_type:ident => |$e:ident: $event_struct:ty| $body:block,)*
+        _ => $default:block
+    }) => {
+        $(
+            if let Some($e) = $event.as_any().downcast_ref::<$event_struct>() {
+                $body
+                return;
+            }
+        )*
+        $default
+    };
+    ($event:expr, {
+        $($event_type:ident => |$e:ident: $event_struct:ty| $body:block,)*
+    }) => {
+        $(
+            if let Some($e) = $event.as_any().downcast_ref::<$event_struct>() {
+                $body
+                return;
+            }
+        )*
+    };
+}
+
 // Re-export main types
 pub use events::*;
 pub use auth::*;
