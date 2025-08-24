@@ -40,13 +40,12 @@ pub struct TokenClaims {
 
 /// 认证令牌验证器
 pub struct AuthTokenValidator {
-    secret_key: String,
     predefined_tokens: HashMap<String, Vec<String>>,
 }
 
 impl AuthTokenValidator {
     /// 创建新的认证令牌验证器
-    pub fn new(secret_key: String) -> Self {
+    pub fn new() -> Self {
         let mut predefined_tokens = HashMap::new();
         
         // 添加预定义的认证令牌
@@ -64,7 +63,6 @@ impl AuthTokenValidator {
         );
         
         Self {
-            secret_key,
             predefined_tokens,
         }
     }

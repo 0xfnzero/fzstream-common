@@ -6,9 +6,11 @@ pub mod events;
 pub mod auth;
 pub mod config;
 pub mod compression;
+pub mod compression_stats;
 
 // Re-export main types
 pub use events::*;
 pub use auth::*;
 pub use config::*;
 pub use compression::*;
+pub use compression_stats::*;
