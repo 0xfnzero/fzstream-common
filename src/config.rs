@@ -16,7 +16,7 @@ impl Default for SerializationProtocol {
 }
 
 /// 压缩级别
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CompressionLevel {
     None,
     LZ4Fast,

@@ -451,3 +451,160 @@ pub struct EventStats {
     pub events_by_type: HashMap<EventType, u64>,
     pub last_event_time: Option<u64>,
 }
+
+/// 事件类型过滤器
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct EventTypeFilter {
+    /// 包含的事件类型列表 (如果为空，则包含所有事件)
+    pub include: Vec<EventType>,
+    /// 排除的事件类型列表 (优先级高于include)
+    pub exclude: Vec<EventType>,
+    /// 是否启用过滤器 (如果为false，则忽略所有过滤规则)
+    pub enabled: bool,
+}
+
+impl Default for EventTypeFilter {
+    fn default() -> Self {
+        Self {
+            include: Vec::new(),
+            exclude: Vec::new(),
+            enabled: true,
+        }
+    }
+}
+
+impl EventTypeFilter {
+    /// 创建新的过滤器
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    /// 创建只包含指定事件类型的过滤器
+    pub fn include_only(event_types: Vec<EventType>) -> Self {
+        Self {
+            include: event_types,
+            exclude: Vec::new(),
+            enabled: true,
+        }
+    }
+    
+    /// 创建排除指定事件类型的过滤器
+    pub fn exclude_only(event_types: Vec<EventType>) -> Self {
+        Self {
+            include: Vec::new(),
+            exclude: event_types,
+            enabled: true,
+        }
+    }
+    
+    /// 创建包含和排除事件类型的复合过滤器
+    pub fn with_include_exclude(include: Vec<EventType>, exclude: Vec<EventType>) -> Self {
+        Self {
+            include,
+            exclude,
+            enabled: true,
+        }
+    }
+    
+    /// 创建禁用的过滤器（允许所有事件通过）
+    pub fn disabled() -> Self {
+        Self {
+            include: Vec::new(),
+            exclude: Vec::new(),
+            enabled: false,
+        }
+    }
+    
+    /// 检查事件类型是否应该被过滤掉
+    pub fn should_filter_out(&self, event_type: &EventType) -> bool {
+        if !self.enabled {
+            return false; // 过滤器未启用，不过滤任何事件
+        }
+        
+        // 优先检查排除列表
+        if self.exclude.contains(event_type) {
+            return true; // 在排除列表中，应该过滤掉
+        }
+        
+        // 如果include列表不为空，检查是否在包含列表中
+        if !self.include.is_empty() {
+            return !self.include.contains(event_type); // 不在包含列表中，应该过滤掉
+        }
+        
+        // include列表为空且不在exclude列表中，不过滤
+        false
+    }
+    
+    /// 检查事件类型是否应该通过过滤器
+    pub fn should_pass(&self, event_type: &EventType) -> bool {
+        !self.should_filter_out(event_type)
+    }
+    
+    /// 添加包含的事件类型
+    pub fn add_include(&mut self, event_type: EventType) -> &mut Self {
+        if !self.include.contains(&event_type) {
+            self.include.push(event_type);
+        }
+        self
+    }
+    
+    /// 添加排除的事件类型
+    pub fn add_exclude(&mut self, event_type: EventType) -> &mut Self {
+        if !self.exclude.contains(&event_type) {
+            self.exclude.push(event_type);
+        }
+        self
+    }
+    
+    /// 移除包含的事件类型
+    pub fn remove_include(&mut self, event_type: &EventType) -> &mut Self {
+        self.include.retain(|t| t != event_type);
+        self
+    }
+    
+    /// 移除排除的事件类型
+    pub fn remove_exclude(&mut self, event_type: &EventType) -> &mut Self {
+        self.exclude.retain(|t| t != event_type);
+        self
+    }
+    
+    /// 清空所有过滤规则
+    pub fn clear(&mut self) -> &mut Self {
+        self.include.clear();
+        self.exclude.clear();
+        self
+    }
+    
+    /// 启用过滤器
+    pub fn enable(&mut self) -> &mut Self {
+        self.enabled = true;
+        self
+    }
+    
+    /// 禁用过滤器
+    pub fn disable(&mut self) -> &mut Self {
+        self.enabled = false;
+        self
+    }
+    
+    /// 获取过滤器统计信息
+    pub fn get_summary(&self) -> String {
+        if !self.enabled {
+            return "Filter: DISABLED (all events pass)".to_string();
+        }
+        
+        let include_summary = if self.include.is_empty() {
+            "all".to_string()
+        } else {
+            format!("{} types", self.include.len())
+        };
+        
+        let exclude_summary = if self.exclude.is_empty() {
+            "none".to_string()
+        } else {
+            format!("{} types", self.exclude.len())
+        };
+        
+        format!("Filter: Include={}, Exclude={}", include_summary, exclude_summary)
+    }
+}

@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use crate::events::EventTypeFilter;
 
 /// 认证消息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -7,6 +8,8 @@ pub struct AuthMessage {
     pub auth_token: String,
     pub client_id: String,
     pub timestamp: u64,
+    /// 可选的事件类型过滤器
+    pub event_filter: Option<EventTypeFilter>,
 }
 
 /// 认证响应
@@ -16,6 +19,8 @@ pub enum AuthResponse {
         message: String,
         client_id: String,
         permissions: Vec<String>,
+        /// 服务器确认的事件过滤器设置
+        event_filter: Option<EventTypeFilter>,
     },
     Failure {
         error: String,
