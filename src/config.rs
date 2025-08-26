@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use std::time::Duration;
 
 /// 序列化协议
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SerializationProtocol {
     JSON,
     Bincode,
