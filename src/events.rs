@@ -67,6 +67,9 @@ pub enum EventType {
     
     // 自定义事件
     Custom(String),
+    
+    // 测试事件（用于调试和系统测试）
+    Test,
 }
 
 impl EventType {
@@ -116,6 +119,7 @@ impl EventType {
             "RaydiumClmmTickArrayAccount" => EventType::RaydiumClmmTickArrayAccount,
             "RaydiumCpmmConfigAccount" => EventType::RaydiumCpmmConfigAccount,
             "RaydiumCpmmPoolStateAccount" => EventType::RaydiumCpmmPoolStateAccount,
+            "Test" => EventType::Test,
             _ => EventType::Custom(s.to_string()),
         }
     }
@@ -166,6 +170,7 @@ impl EventType {
             EventType::RaydiumClmmTickArrayAccount => "RaydiumClmmTickArrayAccount",
             EventType::RaydiumCpmmConfigAccount => "RaydiumCpmmConfigAccount",
             EventType::RaydiumCpmmPoolStateAccount => "RaydiumCpmmPoolStateAccount",
+            EventType::Test => "Test",
             EventType::Custom(s) => s.as_str(),
         }
     }
